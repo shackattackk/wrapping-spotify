@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -14,49 +12,62 @@ import { CalendarDays, Music, Users } from "lucide-react";
 import { TopArtists } from "@/components/top-artists";
 import { TopTracks } from "@/components/top-tracks";
 import { RecentlyPlayed } from "@/components/recently-played";
+import {
+  SpotifyTopTracksResponse,
+  SpotifyTopArtistsResponse,
+} from "@/models/spotify";
 
-export default function DashboardPage() {
-  const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState(false);
-  const accessToken = searchParams.get("access_token");
-  const refreshToken = searchParams.get("refresh_token");
+async function fetchTopTracks(accessToken: string) {
+  const response = await fetch("https://api.spotify.com/v1/me/top/tracks", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      if (!accessToken) return;
+  if (!response.ok) {
+    throw new Error("Failed to fetch data");
+  }
 
-      try {
-        const response = await fetch("https://api.spotify.com/v1/me", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+  return response.json();
+}
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch data");
-        }
+async function fetchTopArtists(accessToken: string) {
+  const response = await fetch("https://api.spotify.com/v1/me/top/artists", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 
-        const data = await response.json();
-        console.log(data);
-        // You can set the fetched data to state here if needed
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  if (!response.ok) {
+    throw new Error("Failed to fetch data");
+  }
 
-    fetchData();
-  }, []);
+  return response.json();
+}
 
-  if (isLoading) {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ access_token: string; refresh_token: string }>;
+}) {
+  const { access_token, refresh_token } = await searchParams;
+  const accessToken = access_token;
+  const refreshToken = refresh_token;
+
+  if (!accessToken) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
-        <p className="text-2xl">Loading your Spotify stats...</p>
+        <p className="text-2xl">Access token is missing</p>
       </div>
     );
   }
+
+  const allArtists: SpotifyTopArtistsResponse = await fetchTopArtists(
+    accessToken
+  );
+  const allTracks: SpotifyTopTracksResponse = await fetchTopTracks(accessToken);
+
+  const [topTracks, topArtists] = await Promise.all([allTracks, allArtists]);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
@@ -158,7 +169,7 @@ export default function DashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pl-2">
-                  <TopArtists />
+                  <TopArtists artists={topArtists.items}/>
                 </CardContent>
               </Card>
               <Card className="col-span-3 bg-pink-500 bg-opacity-20 border-pink-500">
@@ -168,7 +179,7 @@ export default function DashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <TopTracks />
+                  <TopTracks tracks={topTracks.items}/>
                 </CardContent>
               </Card>
             </div>
@@ -184,7 +195,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <TopArtists extended />
+                <TopArtists extended artists={topArtists.items}/>
               </CardContent>
             </Card>
           </TabsContent>
@@ -199,7 +210,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <TopTracks extended />
+                <TopTracks extended tracks={topTracks.items}/>
               </CardContent>
             </Card>
           </TabsContent>

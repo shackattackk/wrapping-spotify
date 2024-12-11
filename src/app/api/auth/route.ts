@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
 export async function GET() {
-  const scope = "user-read-private user-read-email";
+  const scope = "user-read-private user-read-email user-top-read";
   const redirectUri = process.env.SPOTIFY_REDIRECT_URI || "";
   const clientId = process.env.SPOTIFY_CLIENT_ID || "";
   const state = crypto.randomBytes(16).toString("hex");
